@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'src/cube_color_validator.dart';
 
 void main() => runApp(const SolveCubeApp());
 
@@ -273,6 +274,18 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
         OutlinedButton.icon(
           onPressed: () => setState(() => faces = List.generate(6, (_) => List.filled(n * n, 0))),
           icon: const Icon(Icons.refresh_rounded), label: const Text('Reset all stickers'),
+        ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed: () {
+            final issues = CubeColorValidator.validate(size: n, faces: faces);
+            final message = issues.isEmpty
+                ? 'Colour counts are balanced. Full puzzle legality is not checked yet.'
+                : issues.join('  ');
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+          },
+          icon: const Icon(Icons.fact_check_outlined),
+          label: const Text('Check colour counts'),
         ),
         const SizedBox(height: 12),
         Container(
