@@ -38,6 +38,8 @@ void main() {
 
   testWidgets('opens manual entry workspace for 3x3', (tester) async {
     await tester.pumpWidget(const SolveCubeApp());
+    await tester.ensureVisible(find.text('3×3 Cube'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('3×3 Cube'));
     await tester.pumpAndSettle();
     expect(find.text('ENTER YOUR PUZZLE'), findsOneWidget);
