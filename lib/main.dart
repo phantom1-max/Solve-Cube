@@ -217,7 +217,7 @@ class PuzzleWorkspacePage extends StatefulWidget {
 
 List<CubeMove> parseSolutionMoves(String notation) {
   final moves = <CubeMove>[];
-  for (final token in notation.trim().split(RegExp(r'\\s+'))) {
+  for (final token in notation.trim().split(RegExp(r'\s+'))) {
     if (token.isEmpty) continue;
     final base = switch (token[0].toUpperCase()) {
       'U' => CubeMove.u,
