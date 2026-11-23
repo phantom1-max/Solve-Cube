@@ -206,7 +206,17 @@ class PuzzleWorkspacePage extends StatefulWidget {
   State<PuzzleWorkspacePage> createState() => _PuzzleWorkspacePageState();
 }
 
-String _solverMessage(String result) {\n  if (result.startsWith('INVALID:')) return 'The entered stickers do not describe a physically reachable cube. (${result.substring(8)})';\n  if (result == 'TIMEOUT') return 'The local solver did not find a solution within 20 seconds.';\n  return 'The solver could not process this state.';\n}\n\nclass _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
+String _solverMessage(String result) {
+  if (result.startsWith('INVALID:')) {
+    return 'The entered stickers do not describe a physically reachable cube. (${result.substring(8)})';
+  }
+  if (result == 'TIMEOUT') {
+    return 'The local solver did not find a solution within 20 seconds.';
+  }
+  return 'The solver could not process this state.';
+}
+
+class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
   static const palette = [Color(0xFFF4F1E8), Color(0xFFFFD166), Color(0xFFEF6A6A), Color(0xFFFF9D45), Color(0xFF66C99A), Color(0xFF6C8CFF)];
   static const labels = ['White', 'Yellow', 'Red', 'Orange', 'Green', 'Blue'];
   int selectedColor = 0;
