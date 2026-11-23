@@ -1,4 +1,4 @@
-name: Flutter CI
+name: Flutter CI and platform builds
 
 on:
   push:
@@ -11,6 +11,9 @@ concurrency:
   group: flutter-ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,19 +23,108 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Generate Android platform project
-        run: flutter create --platforms=android --org app.solvecube .
+      - name: Generate Flutter platform projects
+        run: flutter create --platforms=android,ios,web,windows,macos,linux --org app.solvecube .
       - name: Install dependencies
         run: flutter pub get
       - name: Analyze
         run: flutter analyze --no-fatal-infos
       - name: Test
         run: flutter test
-      - name: Build Android release APK
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: android
+            os: ubuntu-latest
+          - target: ios
+            os: macos-latest
+          - target: macos
+            os: macos-latest
+          - target: windows
+            os: windows-latest
+          - target: linux
+            os: ubuntu-latest
+          - target: web
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install Linux desktop dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - name: Generate target platform project
+        shell: bash
+        run: flutter create --platforms=android,ios,web,windows,macos,linux --org app.solvecube .
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build Android APK
+        if: matrix.target == 'android'
         run: flutter build apk --release
-      - name: Upload Android APK
+      - name: Build iOS app (unsigned)
+        if: matrix.target == 'ios'
+        run: flutter build ios --release --no-codesign
+      - name: Build macOS app
+        if: matrix.target == 'macos'
+        run: flutter build macos --release
+      - name: Build Windows app
+        if: matrix.target == 'windows'
+        run: flutter build windows --release
+      - name: Build Linux app
+        if: matrix.target == 'linux'
+        run: flutter build linux --release
+      - name: Build web app
+        if: matrix.target == 'web'
+        run: flutter build web --release
+      - name: Upload platform output
         uses: actions/upload-artifact@v4
         with:
-          name: solve-cube-android-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: solve-cube-${{ matrix.target }}
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/ios/iphoneos/Runner.app
+            build/macos/Build/Products/Release/solve_cube.app
+            build/windows/x64/runner/Release
+            build/linux/x64/release/bundle
+            build/web
           if-no-files-found: error
+          retention-days: 14
+
+  publish-prerelease:
+    if: github.event_name != 'pull_request'
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: solve-cube-*
+          path: dist
+          merge-multiple: false
+      - name: Package platform outputs
+        run: |
+          mkdir -p release
+          cp dist/solve-cube-android/app-release.apk release/Solve-Cube-Android.apk
+          for target in ios macos windows linux web; do
+            if [ -d "dist/solve-cube-$target" ]; then
+              (cd "dist/solve-cube-$target" && zip -qr "../../release/Solve-Cube-$target.zip" .)
+            fi
+          done
+          ls -lh release
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          name: Solve Cube v0.1.0 - Platform Preview
+          prerelease: true
+          generate_release_notes: true
+          files: release/*
