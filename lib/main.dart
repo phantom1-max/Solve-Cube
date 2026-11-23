@@ -284,7 +284,14 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(color: const Color(0xFF1A1C25), borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF2C2F3D))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(['UP', 'RIGHT', 'FRONT', 'DOWN', 'LEFT', 'BACK'][face], style: const TextStyle(fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.w800, color: Color(0xFF9DA4BC))),
+              Row(children: [
+                Text(['UP', 'RIGHT', 'FRONT', 'DOWN', 'LEFT', 'BACK'][face], style: const TextStyle(fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.w800, color: Color(0xFF9DA4BC))),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => setState(() => faces[face] = List<int>.filled(n * n, selectedColor)),
+                  child: const Text('Fill face', style: TextStyle(fontSize: 11)),
+                ),
+              ]),
               const SizedBox(height: 10),
               Center(child: SizedBox(
                 width: (n * 39.0) + ((n - 1) * 4),
