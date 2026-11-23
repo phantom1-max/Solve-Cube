@@ -1,8 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solve_cube/main.dart';
 import 'package:solve_cube/src/cube_color_validator.dart';
+import 'package:solve_cube/src/three_by_three_solver.dart';
 
-void main() {
+void main() {\n  mainSolverTests();
   mainValidatorTests();
   testWidgets('shows puzzle choices and coming soon state', (tester) async {
     await tester.pumpWidget(const SolveCubeApp());
@@ -32,5 +33,20 @@ void mainValidatorTests() {
   test('rejects unbalanced sticker counts', () {
     final faces = List.generate(6, (_) => List<int>.filled(9, 0));
     expect(CubeColorValidator.validate(size: 3, faces: faces), isNotEmpty);
+  });
+}
+
+void mainSolverTests() {
+  test('maps face centres to standard cube notation', () {
+    final faces = List.generate(6, (face) => List<int>.filled(9, face));
+    expect(
+      cubeDefinitionFromFaces(faces),
+      'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB',
+    );
+  });
+
+  test('recognizes an already-solved 3x3 cube', () {
+    const solved = 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB';
+    expect(solveCubeDefinition(solved), 'SOLVED');
   });
 }
