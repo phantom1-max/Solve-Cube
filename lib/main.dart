@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:puzzle_cube/puzzle_cube.dart';
 import 'src/three_by_three_solver.dart';
 import 'src/cube_color_validator.dart';
 
@@ -213,6 +215,175 @@ class PuzzleWorkspacePage extends StatefulWidget {
   State<PuzzleWorkspacePage> createState() => _PuzzleWorkspacePageState();
 }
 
+List<CubeMove> parseSolutionMoves(String notation) {
+  final moves = <CubeMove>[];
+  for (final token in notation.trim().split(RegExp(r'\\s+'))) {
+    if (token.isEmpty) continue;
+    final base = switch (token[0].toUpperCase()) {
+      'U' => CubeMove.u,
+      'D' => CubeMove.d,
+      'L' => CubeMove.l,
+      'R' => CubeMove.r,
+      'F' => CubeMove.f,
+      'B' => CubeMove.b,
+      _ => throw FormatException('Unsupported move: $token'),
+    };
+    if (token.endsWith("'")) {
+      moves.add(base.inverse);
+    } else if (token.endsWith('2')) {
+      moves
+        ..add(base)
+        ..add(base);
+    } else {
+      moves.add(base);
+    }
+  }
+  return moves;
+}
+
+class SolutionPlaybackPage extends StatefulWidget {
+  const SolutionPlaybackPage({super.key, required this.notation, required this.moves});
+  final String notation;
+  final List<CubeMove> moves;
+
+  @override
+  State<SolutionPlaybackPage> createState() => _SolutionPlaybackPageState();
+}
+
+class _SolutionPlaybackPageState extends State<SolutionPlaybackPage> {
+  late final PuzzleCubeState _startState;
+  late final CubeController _controller;
+  Timer? _timer;
+  int _step = 0;
+  bool _playing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startState = PuzzleCubeState.solved();
+    for (final move in widget.moves.reversed) {
+      _startState.applyMove(move.inverse);
+    }
+    _controller = CubeController(
+      initialState: _startState.copy(),
+      moveDuration: const Duration(milliseconds: 350),
+      initialViewRotationX: -0.5,
+      initialViewRotationY: 0.6,
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _advance() {
+    if (_step >= widget.moves.length) {
+      _pause();
+      return;
+    }
+    if (_controller.isAnimating || _controller.hasQueuedWork) return;
+    _controller.play(widget.moves[_step]);
+    setState(() => _step++);
+    if (_step >= widget.moves.length) _pause();
+  }
+
+  void _play() {
+    if (_step >= widget.moves.length) _reset();
+    setState(() => _playing = true);
+    _advance();
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 550), (_) {
+      if (!mounted) return;
+      _advance();
+    });
+  }
+
+  void _pause() {
+    _timer?.cancel();
+    _timer = null;
+    if (mounted && _playing) setState(() => _playing = false);
+  }
+
+  void _next() {
+    _pause();
+    _advance();
+  }
+
+  void _previous() {
+    _pause();
+    final target = (_step - 1).clamp(0, widget.moves.length);
+    _controller.replaceState(_startState.copy());
+    if (target > 0) {
+      _controller.playSequence(widget.moves.take(target).toList());
+    }
+    setState(() => _step = target);
+  }
+
+  void _reset() {
+    _pause();
+    _controller.replaceState(_startState.copy());
+    setState(() => _step = 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lastMove = _step == 0 ? 'Ready' : widget.moves[_step - 1].name.toUpperCase();
+    final progress = widget.moves.isEmpty ? 1.0 : _step / widget.moves.length;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Your solution'),
+        actions: [
+          IconButton(
+            tooltip: 'Recenter 3D view',
+            onPressed: _controller.resetCamera,
+            icon: const Icon(Icons.center_focus_strong),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(children: [
+          const SizedBox(height: 12),
+          Text('STEP $_step OF ${widget.moves.length}', style: const TextStyle(fontSize: 11, letterSpacing: 1.8, fontWeight: FontWeight.w800, color: Color(0xFF9DA4BC))),
+          const SizedBox(height: 5),
+          Text(lastMove, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+          Expanded(
+            child: Center(
+              child: SizedBox(
+                width: 320,
+                height: 320,
+                child: Cube(controller: _controller, enableGestures: false),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: LinearProgressIndicator(value: progress, minHeight: 5, borderRadius: BorderRadius.circular(8)),
+          ),
+          const SizedBox(height: 14),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            IconButton.filledTonal(onPressed: _reset, tooltip: 'Restart', icon: const Icon(Icons.restart_alt_rounded)),
+            const SizedBox(width: 10),
+            IconButton.filledTonal(onPressed: _step > 0 ? _previous : null, tooltip: 'Previous move', icon: const Icon(Icons.skip_previous_rounded)),
+            const SizedBox(width: 10),
+            IconButton.filled(onPressed: _playing ? _pause : _play, tooltip: _playing ? 'Pause' : 'Play', icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded), iconSize: 30),
+            const SizedBox(width: 10),
+            IconButton.filledTonal(onPressed: _step < widget.moves.length ? _next : null, tooltip: 'Next move', icon: const Icon(Icons.skip_next_rounded)),
+          ]),
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: SelectableText(widget.notation, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Color(0xFFB7BED7))),
+          ),
+          const SizedBox(height: 22),
+        ]),
+      ),
+    );
+  }
+}
+
 String _solverMessage(String result) {
   if (result.startsWith('INVALID:')) {
     return 'The entered stickers do not describe a physically reachable cube. (${result.substring(8)})';
@@ -381,26 +552,26 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
               }
               final result = await compute(solveCubeDefinition, definition);
               if (!mounted) return;
-              final isSolution = result != 'SOLVED' &&
-                  !result.startsWith('INVALID:') &&
-                  result != 'TIMEOUT' &&
-                  result != 'ERROR';
-              final heading = result == 'SOLVED'
-                  ? 'Already solved'
-                  : result.startsWith('INVALID:')
-                      ? 'Invalid cube state'
-                      : result == 'TIMEOUT'
-                          ? 'Solver timed out'
-                          : result == 'ERROR'
-                              ? 'Solver error'
-                              : 'Solution found';
+              if (result == 'SOLVED') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('This cube is already solved.')),
+                );
+                return;
+              }
+              if (!result.startsWith('INVALID:') && result != 'TIMEOUT' && result != 'ERROR') {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => SolutionPlaybackPage(
+                    notation: result,
+                    moves: parseSolutionMoves(result),
+                  ),
+                ));
+                return;
+              }
               showDialog<void>(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: Text(heading),
-                  content: SingleChildScrollView(
-                    child: SelectableText(isSolution ? result : _solverMessage(result)),
-                  ),
+                  title: Text(result.startsWith('INVALID:') ? 'Invalid cube state' : 'Could not solve'),
+                  content: SelectableText(_solverMessage(result)),
                   actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
                 ),
               );
