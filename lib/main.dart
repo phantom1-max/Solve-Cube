@@ -232,6 +232,29 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
   @override
   Widget build(BuildContext context) {
     final n = widget.puzzle.size;
+    if (widget.puzzle.kind != PuzzleKind.cube) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.puzzle.name), backgroundColor: Colors.transparent),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.construction_rounded, size: 42, color: Color(0xFFAAB3FF)),
+              const SizedBox(height: 18),
+              const Text('Custom puzzle editor in progress', textAlign: TextAlign.center, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              Text(
+                widget.puzzle.kind == PuzzleKind.pyraminx
+                    ? 'Pyraminx needs a four-sided piece editor and its own solver. It will not be treated as a standard cube.'
+                    : 'Mirror Cube needs a shape-based editor and its own state validation. It will not be treated as a standard cube.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white.withOpacity(.65), height: 1.5),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: Text(widget.puzzle.name), backgroundColor: Colors.transparent),
       body: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 28), children: [
