@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solve_cube/main.dart';
 import 'package:solve_cube/src/cube_color_validator.dart';
