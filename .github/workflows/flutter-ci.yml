@@ -25,7 +25,19 @@ jobs:
           cache: true
       - name: Generate Flutter platform projects
         run: flutter create --platforms=android,ios,web,windows,macos,linux --org app.solvecube .
-      - name: Check Dart formatting
+      - name: Format Dart sources
+        run: dart format lib test
+      - name: Commit formatter changes
+        if: github.event_name == 'push'
+        run: |
+          if ! git diff --quiet -- lib test; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add lib test
+            git commit -m "style: format Dart sources"
+            git push
+          fi
+      - name: Verify Dart formatting
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Install dependencies
         run: flutter pub get
@@ -87,17 +99,52 @@ jobs:
       - name: Build web app
         if: matrix.target == 'web'
         run: flutter build web --release
-      - name: Upload platform output
+      - name: Upload Android APK
+        if: matrix.target == 'android'
         uses: actions/upload-artifact@v4
         with:
-          name: solve-cube-${{ matrix.target }}
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/ios/iphoneos/Runner.app
-            build/macos/Build/Products/Release/solve_cube.app
-            build/windows/x64/runner/Release
-            build/linux/x64/release/bundle
-            build/web
+          name: solve-cube-android
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload iOS app
+        if: matrix.target == 'ios'
+        uses: actions/upload-artifact@v4
+        with:
+          name: solve-cube-ios
+          path: build/ios/iphoneos/Runner.app
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload macOS app
+        if: matrix.target == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: solve-cube-macos
+          path: build/macos/Build/Products/Release/solve_cube.app
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Windows app
+        if: matrix.target == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: solve-cube-windows
+          path: build/windows/x64/runner/Release
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Linux app
+        if: matrix.target == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: solve-cube-linux
+          path: build/linux/x64/release/bundle
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Web build
+        if: matrix.target == 'web'
+        uses: actions/upload-artifact@v4
+        with:
+          name: solve-cube-web
+          path: build/web
           if-no-files-found: error
           retention-days: 14
 
@@ -124,7 +171,7 @@ jobs:
 
   publish-prerelease:
     if: github.event_name != 'pull_request'
-    needs: [test, build]
+    needs: [test, build, deploy-web]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
