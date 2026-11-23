@@ -15,7 +15,7 @@ class SolveCubeApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.dark),
         scaffoldBackgroundColor: const Color(0xFF101116),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1A1C25),
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
