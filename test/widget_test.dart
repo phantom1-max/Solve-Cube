@@ -60,8 +60,6 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('FRONT'), findsOneWidget);
-    await tester.ensureVisible(find.text('Reset all stickers'));
-    await tester.pumpAndSettle();
-    expect(find.text('Reset all stickers'), findsOneWidget);
+    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
   });
 }
