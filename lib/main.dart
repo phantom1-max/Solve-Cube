@@ -286,7 +286,7 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
         const SizedBox(height: 8),
         const Text('Tap a sticker to colour it.', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800)),
         const SizedBox(height: 7),
-        Text('Choose a colour below, then fill in each face. This is the manual-entry workspace; scanning and solving are not enabled yet.', style: TextStyle(color: Colors.white.withOpacity(.62), height: 1.45)),
+        Text('Choose a colour below, then fill in each face. Photos can be attached as references; automatic colour recognition is still in development. The local solver is currently available only for 3×3.', style: TextStyle(color: Colors.white.withOpacity(.62), height: 1.45)),
         const SizedBox(height: 22),
         Wrap(spacing: 10, runSpacing: 10, children: List.generate(palette.length, (i) => InkWell(
           onTap: () => setState(() => selectedColor = i),
