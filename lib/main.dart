@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'src/three_by_three_solver.dart';
 import 'src/cube_color_validator.dart';
 
@@ -226,6 +228,23 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
   static const labels = ['White', 'Yellow', 'Red', 'Orange', 'Green', 'Blue'];
   int selectedColor = 0;
   late List<List<int>> faces;
+  final ImagePicker _picker = ImagePicker();
+  final Map<int, Uint8List> _facePhotos = {};
+
+  Future<void> _pickFacePhoto(int face, ImageSource source) async {
+    try {
+      final image = await _picker.pickImage(source: source, imageQuality: 88);
+      if (image == null) return;
+      final bytes = await image.readAsBytes();
+      if (!mounted) return;
+      setState(() => _facePhotos[face] = bytes);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the image source on this device.')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -296,7 +315,27 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
                   onPressed: () => setState(() => faces[face] = List<int>.filled(n * n, selectedColor)),
                   child: const Text('Fill face', style: TextStyle(fontSize: 11)),
                 ),
+                if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS))
+                  IconButton(
+                    tooltip: 'Take face photo',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _pickFacePhoto(face, ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt_outlined, size: 19),
+                  ),
+                IconButton(
+                  tooltip: 'Choose face photo',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _pickFacePhoto(face, ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined, size: 19),
+                ),
               ]),
+              if (_facePhotos.containsKey(face)) ...[
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.memory(_facePhotos[face]!, height: 100, width: double.infinity, fit: BoxFit.contain),
+                ),
+              ],
               const SizedBox(height: 10),
               Center(child: SizedBox(
                 width: (n * 39.0) + ((n - 1) * 4),
