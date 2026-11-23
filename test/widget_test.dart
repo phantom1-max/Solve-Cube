@@ -37,6 +37,11 @@ void main() {
     expect(find.text('Let’s solve\nsomething.'), findsOneWidget);
     expect(find.text('2×2 Cube'), findsOneWidget);
     expect(find.text('3×3 Cube'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Gear Cube'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Gear Cube'), findsOneWidget);
     expect(find.text('COMING SOON'), findsOneWidget);
   });
@@ -48,6 +53,11 @@ void main() {
     await tester.tap(find.text('3×3 Cube'));
     await tester.pumpAndSettle();
     expect(find.text('ENTER YOUR PUZZLE'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('FRONT'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('FRONT'), findsOneWidget);
     expect(find.text('Reset all stickers'), findsOneWidget);
   });
