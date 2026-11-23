@@ -185,8 +185,13 @@ class ShapePuzzleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final soon = puzzle.kind == PuzzleKind.comingSoon;
-    return Container(
-      decoration: BoxDecoration(color: const Color(0xFF1A1C25), borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF2C2F3D))),
+    return Material(
+      color: const Color(0xFF1A1C25),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFF2C2F3D)),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         leading: Container(width: 43, height: 43, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0xFF292D3C), borderRadius: BorderRadius.circular(13)), child: Text(puzzle.symbol, style: const TextStyle(fontSize: 24, color: Color(0xFFB4BCFF)))),
