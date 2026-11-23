@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'src/three_by_three_solver.dart';
 import 'src/cube_color_validator.dart';
 
 void main() => runApp(const SolveCubeApp());
@@ -204,7 +206,7 @@ class PuzzleWorkspacePage extends StatefulWidget {
   State<PuzzleWorkspacePage> createState() => _PuzzleWorkspacePageState();
 }
 
-class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
+String _solverMessage(String result) {\n  if (result.startsWith('INVALID:')) return 'The entered stickers do not describe a physically reachable cube. (${result.substring(8)})';\n  if (result == 'TIMEOUT') return 'The local solver did not find a solution within 20 seconds.';\n  return 'The solver could not process this state.';\n}\n\nclass _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
   static const palette = [Color(0xFFF4F1E8), Color(0xFFFFD166), Color(0xFFEF6A6A), Color(0xFFFF9D45), Color(0xFF66C99A), Color(0xFF6C8CFF)];
   static const labels = ['White', 'Yellow', 'Red', 'Orange', 'Green', 'Blue'];
   int selectedColor = 0;
@@ -282,6 +284,46 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
           icon: const Icon(Icons.fact_check_outlined),
           label: const Text('Check colour counts'),
         ),
+        if (widget.puzzle.kind == PuzzleKind.cube && n == 3) ...[
+          const SizedBox(height: 10),
+          FilledButton(
+            onPressed: () async {
+              final definition = cubeDefinitionFromFaces(faces);
+              if (definition == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Set six different centre colours before solving.')),
+                );
+                return;
+              }
+              final result = await compute(solveCubeDefinition, definition);
+              if (!mounted) return;
+              final isSolution = result != 'SOLVED' &&
+                  !result.startsWith('INVALID:') &&
+                  result != 'TIMEOUT' &&
+                  result != 'ERROR';
+              final heading = result == 'SOLVED'
+                  ? 'Already solved'
+                  : result.startsWith('INVALID:')
+                      ? 'Invalid cube state'
+                      : result == 'TIMEOUT'
+                          ? 'Solver timed out'
+                          : result == 'ERROR'
+                              ? 'Solver error'
+                              : 'Solution found';
+              showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text(heading),
+                  content: SingleChildScrollView(
+                    child: SelectableText(isSolution ? result : _solverMessage(result)),
+                  ),
+                  actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+                ),
+              );
+            },
+            child: const Text('Solve 3×3 cube'),
+          ),
+        ],
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(15),
