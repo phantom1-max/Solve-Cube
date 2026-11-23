@@ -25,6 +25,8 @@ jobs:
           cache: true
       - name: Generate Flutter platform projects
         run: flutter create --platforms=android,ios,web,windows,macos,linux --org app.solvecube .
+      - name: Check Dart formatting
+        run: dart format --output=none --set-exit-if-changed lib test
       - name: Install dependencies
         run: flutter pub get
       - name: Analyze
@@ -115,7 +117,7 @@ jobs:
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: web/build/web
+          path: web
       - name: Deploy website
         id: deployment
         uses: actions/deploy-pages@v4
@@ -137,8 +139,10 @@ jobs:
           set -euo pipefail
           mkdir -p release
 
-          test -s dist/solve-cube-android/app-release.apk
-          cp dist/solve-cube-android/app-release.apk release/Solve-Cube-Android.apk
+          ANDROID_APK="$(find dist/solve-cube-android -type f -name app-release.apk -print -quit)"
+          test -n "$ANDROID_APK"
+          test -s "$ANDROID_APK"
+          cp "$ANDROID_APK" release/Solve-Cube-Android.apk
           (cd dist/solve-cube-android && zip -qr ../../release/Solve-Cube-Android.zip .)
 
           for target in ios macos windows linux web; do
