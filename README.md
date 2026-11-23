@@ -28,4 +28,4 @@ Semantic Versioning: MAJOR.MINOR.PATCH. The first stable release is intended to 
 
 ## Status
 
-The repository has been initialized. The application implementation, solver integrations, device validation, and release artifacts are still to be completed.
+The Flutter application shell and first manual sticker-entry workspace are now committed. Puzzle selection covers 2×2–7×7 cubes, Pyraminx, and Mirror Cube; Gear Cube is marked coming soon. Automated Flutter analyze and widget-test checks have been added. Camera scanning, legal-state validation, puzzle solvers, solution playback, and platform release builds are not implemented yet.
