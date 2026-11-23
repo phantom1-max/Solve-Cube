@@ -25,7 +25,8 @@ void main() {
 
   test('expands prime and double turns for 3D playback', () {
     final moves = parseSolutionMoves("R U' F2");
-    expect(moves.map((move) => move.name.toUpperCase()).toList(), ['R', 'UI', 'F', 'F']);
+    expect(moves.map((move) => move.name.toUpperCase()).toList(),
+        ['R', 'UI', 'F', 'F']);
   });
 
   test('recognizes an already-solved 3x3 cube', () {

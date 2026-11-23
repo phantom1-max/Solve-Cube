@@ -30,7 +30,8 @@ class CubeColorValidator {
     if (issues.isNotEmpty) return issues;
     for (var color = 0; color < colorCount; color++) {
       if (counts[color] != expectedPerColor) {
-        issues.add('Colour ${color + 1}: expected $expectedPerColor stickers, found ${counts[color]}.');
+        issues.add(
+            'Colour ${color + 1}: expected $expectedPerColor stickers, found ${counts[color]}.');
       }
     }
     return issues;
