@@ -141,20 +141,11 @@ jobs:
           cp dist/solve-cube-android/app-release.apk release/Solve-Cube-Android.apk
           (cd dist/solve-cube-android && zip -qr ../../release/Solve-Cube-Android.zip .)
 
-          test -d dist/solve-cube-ios/Runner.app
-          (cd dist/solve-cube-ios && zip -qr ../../release/Solve-Cube-iOS.zip .)
-
-          test -d dist/solve-cube-macos/solve_cube.app
-          (cd dist/solve-cube-macos && zip -qr ../../release/Solve-Cube-macOS.zip .)
-
-          test -d dist/solve-cube-windows
-          (cd dist/solve-cube-windows && zip -qr ../../release/Solve-Cube-Windows.zip .)
-
-          test -d dist/solve-cube-linux
-          (cd dist/solve-cube-linux && zip -qr ../../release/Solve-Cube-Linux.zip .)
-
-          test -d dist/solve-cube-web
-          (cd dist/solve-cube-web && zip -qr ../../release/Solve-Cube-Web.zip .)
+          for target in ios macos windows linux web; do
+            test -d "dist/solve-cube-$target"
+            test -n "$(find "dist/solve-cube-$target" -mindepth 1 -print -quit)"
+            (cd "dist/solve-cube-$target" && zip -qr "../../release/Solve-Cube-$target.zip" .)
+          done
 
           test "$(find release -maxdepth 1 -type f | wc -l)" -eq 7
           for archive in release/*.zip; do unzip -t "$archive"; done
