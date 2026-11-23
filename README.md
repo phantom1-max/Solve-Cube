@@ -28,4 +28,4 @@ Semantic Versioning: MAJOR.MINOR.PATCH. The first stable release is intended to 
 
 ## Status
 
-The Flutter application shell and first manual sticker-entry workspace are now committed. Puzzle selection covers 2×2–7×7 cubes, Pyraminx, and Mirror Cube; Gear Cube is marked coming soon. Automated Flutter analyze and widget-test checks have been added. Camera scanning, legal-state validation, puzzle solvers, solution playback, and platform release builds are not implemented yet.
+The Flutter app shell, puzzle picker, and manual cube sticker editor are committed. Basic sticker-count checks are available. An offline Kociemba solver adapter is connected for 3×3 cubes; it validates reachability and replay-checks the returned algorithm. The remaining cube sizes, Pyraminx, and Mirror Cube still need their own input models and solver engines. Camera scanning, 3D solution playback, and non-Android platform builds remain in development. GitHub Actions runs analysis, tests, and an Android APK build; check the Actions tab for the latest result.
