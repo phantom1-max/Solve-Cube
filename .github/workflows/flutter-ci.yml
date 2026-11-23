@@ -131,21 +131,47 @@ jobs:
           pattern: solve-cube-*
           path: dist
           merge-multiple: false
-      - name: Package platform outputs
+      - name: Validate all platform artifacts and create ZIP packages
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p release
+
+          test -s dist/solve-cube-android/app-release.apk
           cp dist/solve-cube-android/app-release.apk release/Solve-Cube-Android.apk
-          for target in ios macos windows linux web; do
-            if [ -d "dist/solve-cube-$target" ]; then
-              (cd "dist/solve-cube-$target" && zip -qr "../../release/Solve-Cube-$target.zip" .)
-            fi
-          done
+          (cd dist/solve-cube-android && zip -qr ../../release/Solve-Cube-Android.zip .)
+
+          test -d dist/solve-cube-ios/Runner.app
+          (cd dist/solve-cube-ios && zip -qr ../../release/Solve-Cube-iOS.zip .)
+
+          test -d dist/solve-cube-macos/solve_cube.app
+          (cd dist/solve-cube-macos && zip -qr ../../release/Solve-Cube-macOS.zip .)
+
+          test -d dist/solve-cube-windows
+          (cd dist/solve-cube-windows && zip -qr ../../release/Solve-Cube-Windows.zip .)
+
+          test -d dist/solve-cube-linux
+          (cd dist/solve-cube-linux && zip -qr ../../release/Solve-Cube-Linux.zip .)
+
+          test -d dist/solve-cube-web
+          (cd dist/solve-cube-web && zip -qr ../../release/Solve-Cube-Web.zip .)
+
+          test "$(find release -maxdepth 1 -type f | wc -l)" -eq 7
+          for archive in release/*.zip; do unzip -t "$archive"; done
           ls -lh release
+
+      - name: Read app version
+        id: app_version
+        shell: bash
+        run: |
+          VERSION="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)"
+          test -n "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Publish prerelease
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.0
-          name: Solve Cube v0.1.0 - Platform Preview
+          tag_name: v${{ steps.app_version.outputs.version }}
+          name: Solve Cube v${{ steps.app_version.outputs.version }} - Platform Preview
           prerelease: true
           generate_release_notes: true
           files: release/*
