@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:puzzle_cube/puzzle_cube.dart';
+import 'package:puzzle_cube/puzzle_cube.dart' hide CubeColorValidator;
 import 'src/three_by_three_solver.dart';
 import 'src/cube_color_validator.dart';
 
