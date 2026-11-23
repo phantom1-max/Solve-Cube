@@ -31,6 +31,8 @@ String solveCubeDefinition(String definition) {
     final solution = cube.solve(timeout: const Duration(seconds: 20));
     if (solution == null) return 'TIMEOUT';
     if (solution.isEmpty) return 'SOLVED';
+    final replayed = solution.algorithm.apply(cube);
+    if (!replayed.isSolved) return 'ERROR';
     return solution.algorithm.toString();
   } on ArgumentError {
     return 'INVALID:definition';
