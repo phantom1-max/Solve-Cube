@@ -1,0 +1,23 @@
+name: solve_cube
+description: Offline-first twisty puzzle solver with guided input and animated solutions.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  camera: ^0.11.0+2
+  image_picker: ^1.1.2
+  puzzle_cube: ^0.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
