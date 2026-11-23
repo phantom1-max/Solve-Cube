@@ -79,7 +79,7 @@ class PuzzleHomePage extends StatelessWidget {
                   const SizedBox(height: 34),
                   const Text('Let’s solve\nsomething.', style: TextStyle(fontSize: 36, height: 1.08, fontWeight: FontWeight.w800, letterSpacing: -1.2)),
                   const SizedBox(height: 12),
-                  Text('Choose your puzzle to get started.', style: TextStyle(color: Colors.white.withValues(alpha: .62), fontSize: 15)),
+                  Text('Choose your puzzle to get started.', style: TextStyle(color: Colors.white.withOpacity(.62), fontSize: 15)),
                   const SizedBox(height: 25),
                   Container(
                     padding: const EdgeInsets.all(17),
@@ -125,7 +125,7 @@ class PuzzleHomePage extends StatelessWidget {
                   child: ShapePuzzleTile(puzzle: p),
                 )),
                 const SizedBox(height: 18),
-                Center(child: Text('SOLVE CUBE  •  VERSION 0.1.0', style: TextStyle(fontSize: 10, letterSpacing: 1.4, color: Colors.white.withValues(alpha: .35)))),
+                Center(child: Text('SOLVE CUBE  •  VERSION 0.1.0', style: TextStyle(fontSize: 10, letterSpacing: 1.4, color: Colors.white.withOpacity(.35)))),
                 const SizedBox(height: 22),
               ])),
             ),
@@ -231,7 +231,7 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
         const SizedBox(height: 8),
         const Text('Tap a sticker to colour it.', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800)),
         const SizedBox(height: 7),
-        Text('Choose a colour below, then fill in each face. This is the manual-entry workspace; scanning and solving are not enabled yet.', style: TextStyle(color: Colors.white.withValues(alpha: .62), height: 1.45)),
+        Text('Choose a colour below, then fill in each face. This is the manual-entry workspace; scanning and solving are not enabled yet.', style: TextStyle(color: Colors.white.withOpacity(.62), height: 1.45)),
         const SizedBox(height: 22),
         Wrap(spacing: 10, runSpacing: 10, children: List.generate(palette.length, (i) => InkWell(
           onTap: () => setState(() => selectedColor = i),
@@ -263,7 +263,7 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
                   itemCount: n * n,
                   itemBuilder: (context, index) => InkWell(
                     onTap: () => setState(() => faces[face][index] = selectedColor),
-                    child: Container(decoration: BoxDecoration(color: palette[faces[face][index]], borderRadius: BorderRadius.circular(5), border: Border.all(color: Colors.black.withValues(alpha: .35), width: 2))),
+                    child: Container(decoration: BoxDecoration(color: palette[faces[face][index]], borderRadius: BorderRadius.circular(5), border: Border.all(color: Colors.black.withOpacity(.35), width: 2))),
                   ),
                 ),
               )),
