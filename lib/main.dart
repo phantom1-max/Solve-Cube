@@ -551,7 +551,7 @@ class _PuzzleWorkspacePageState extends State<PuzzleWorkspacePage> {
                 return;
               }
               final result = await compute(solveCubeDefinition, definition);
-              if (!mounted) return;
+              if (!context.mounted) return;
               if (result == 'SOLVED') {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('This cube is already solved.')),
