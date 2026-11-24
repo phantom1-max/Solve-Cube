@@ -156,7 +156,7 @@ jobs:
           $light = Join-Path $wixRoot "light.exe"
           foreach ($tool in @($heat,$candle,$light)) { if (!(Test-Path $tool)) { throw "WiX tool missing: $tool" } }
 
-          & $heat dir $appDir -cg AppFiles -dr INSTALLFOLDER -gg -scom -sreg -sfrag -srd -out (Join-Path $PWD "Files.wxs")
+          & $heat dir $appDir -cg AppFiles -dr INSTALLFOLDER -gg -scom -sreg -sfrag -srd -var var.SourceDir -out (Join-Path $PWD "Files.wxs")
           if ($LASTEXITCODE -ne 0) { throw "WiX heat failed" }
 
           $product = @"
@@ -179,7 +179,7 @@ jobs:
           "@
           Set-Content -Path (Join-Path $PWD "Product.wxs") -Value $product -Encoding UTF8
           Push-Location $PWD
-          & $candle -nologo -arch x64 Product.wxs Files.wxs
+          & $candle -nologo -arch x64 "-dSourceDir=$appDir" Product.wxs Files.wxs
           if ($LASTEXITCODE -ne 0) { throw "WiX candle failed" }
           & $light -nologo -out (Join-Path $releaseDir "Solve-Cube-Windows-x64.msi") Product.wixobj Files.wixobj
           if ($LASTEXITCODE -ne 0) { throw "WiX light failed" }
@@ -232,6 +232,7 @@ jobs:
           Categories=Game;
           Terminal=false
           EOF
+          cp appimage-root/usr/share/applications/solve-cube.desktop appimage-root/solve-cube.desktop
           chmod 0755 deb-root/usr/bin/solve-cube appimage-root/AppRun appimage-root/usr/bin/solve-cube
           dpkg-deb --build --root-owner-group deb-root release/Solve-Cube-linux-x86_64.deb
           curl -L --fail --retry 3 -o appimagetool.AppImage https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
