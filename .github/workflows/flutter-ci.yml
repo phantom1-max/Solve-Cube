@@ -56,8 +56,10 @@ jobs:
             os: ubuntu-latest
           - target: ios
             os: macos-latest
-          - target: macos
-            os: macos-latest
+          - target: macos-arm64
+            os: macos-15
+          - target: macos-intel
+            os: macos-15-intel
           - target: windows
             os: windows-latest
           - target: linux
@@ -75,36 +77,177 @@ jobs:
         if: matrix.target == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libfuse2 squashfs-tools
       - name: Generate target platform project
         shell: bash
         run: flutter create --platforms=android,ios,web,windows,macos,linux --org app.solvecube .
       - name: Install dependencies
         run: flutter pub get
-      - name: Build Android APK
+      - name: Build Android universal APK
         if: matrix.target == 'android'
         run: flutter build apk --release
+      - name: Build Android ABI APKs
+        if: matrix.target == 'android'
+        run: flutter build apk --split-per-abi --release
       - name: Build iOS app (unsigned)
         if: matrix.target == 'ios'
         run: flutter build ios --release --no-codesign
       - name: Build macOS app
-        if: matrix.target == 'macos'
+        if: startsWith(matrix.target, 'macos-')
         run: flutter build macos --release
+      - name: Package macOS DMG
+        if: startsWith(matrix.target, 'macos-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          APP="build/macos/Build/Products/Release/solve_cube.app"
+          test -d "$APP"
+          ARCH="$(uname -m)"
+          if [ "$ARCH" = "arm64" ]; then LABEL="arm64"; else LABEL="intel"; fi
+          hdiutil create -volname "Solve Cube" -srcfolder "$APP" -ov -format UDZO "release/Solve-Cube-macos-${LABEL}.dmg"
+          test -s "release/Solve-Cube-macos-${LABEL}.dmg"
       - name: Build Windows app
         if: matrix.target == 'windows'
         run: flutter build windows --release
+      - name: Build Windows EXE and MSI installers
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $appDir = (Resolve-Path "build/windows/x64/runner/Release").Path
+          $releaseDir = Join-Path $PWD "release"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+
+          choco install innosetup wixtoolset --no-progress -y
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw "Inno Setup compiler not found: $iscc" }
+
+          $iss = @"
+          [Setup]
+          AppId={{8B7A9D1E-3F24-4D7B-9A31-1D9C7F0B2A61}
+          AppName=Solve Cube
+          AppVersion=0.1.0
+          DefaultDirName={autopf}\Solve Cube
+          DefaultGroupName=Solve Cube
+          OutputDir=$releaseDir
+          OutputBaseFilename=Solve-Cube-Windows-x64-Setup
+          ArchitecturesInstallIn64BitMode=x64
+          Compression=lzma2
+          SolidCompression=yes
+          PrivilegesRequired=admin
+          [Files]
+          Source: "$appDir\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+          [Icons]
+          Name: "{group}\Solve Cube"; Filename: "{app}\solve_cube.exe"
+          Name: "{autodesktop}\Solve Cube"; Filename: "{app}\solve_cube.exe"
+          "@
+          $issPath = Join-Path $PWD "Solve-Cube.iss"
+          Set-Content -Path $issPath -Value $iss -Encoding UTF8
+          & $iscc $issPath
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
+
+          $wixRoot = Join-Path "${env:ProgramFiles(x86)}" "WiX Toolset v3.14\bin"
+          if (!(Test-Path (Join-Path $wixRoot "heat.exe"))) {
+            $wixRoot = Join-Path "${env:ProgramFiles(x86)}" "WiX Toolset v3.11\bin"
+          }
+          $heat = Join-Path $wixRoot "heat.exe"
+          $candle = Join-Path $wixRoot "candle.exe"
+          $light = Join-Path $wixRoot "light.exe"
+          foreach ($tool in @($heat,$candle,$light)) { if (!(Test-Path $tool)) { throw "WiX tool missing: $tool" } }
+
+          & $heat dir $appDir -cg AppFiles -dr INSTALLFOLDER -gg -scom -sreg -sfrag -srd -out (Join-Path $PWD "Files.wxs")
+          if ($LASTEXITCODE -ne 0) { throw "WiX heat failed" }
+
+          $product = @"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+            <Product Id="*" Name="Solve Cube" Language="1033" Version="0.1.0" Manufacturer="Solve Cube contributors" UpgradeCode="D18F4C40-7B2E-4D8D-9E30-4C8C6B4B1A22">
+              <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64" />
+              <MajorUpgrade DowngradeErrorMessage="A newer version of Solve Cube is already installed." />
+              <MediaTemplate />
+              <Directory Id="TARGETDIR" Name="SourceDir">
+                <Directory Id="ProgramFiles64Folder">
+                  <Directory Id="INSTALLFOLDER" Name="Solve Cube" />
+                </Directory>
+              </Directory>
+              <Feature Id="ProductFeature" Title="Solve Cube" Level="1">
+                <ComponentGroupRef Id="AppFiles" />
+              </Feature>
+            </Product>
+          </Wix>
+          "@
+          Set-Content -Path (Join-Path $PWD "Product.wxs") -Value $product -Encoding UTF8
+          Push-Location $PWD
+          & $candle -nologo -arch x64 Product.wxs Files.wxs
+          if ($LASTEXITCODE -ne 0) { throw "WiX candle failed" }
+          & $light -nologo -out (Join-Path $releaseDir "Solve-Cube-Windows-x64.msi") Product.wixobj Files.wixobj
+          if ($LASTEXITCODE -ne 0) { throw "WiX light failed" }
+          Pop-Location
+
+          Get-ChildItem $releaseDir
+          if (!(Test-Path (Join-Path $releaseDir "Solve-Cube-Windows-x64-Setup.exe"))) { throw "EXE installer missing" }
+          if (!(Test-Path (Join-Path $releaseDir "Solve-Cube-Windows-x64.msi"))) { throw "MSI installer missing" }
       - name: Build Linux app
         if: matrix.target == 'linux'
         run: flutter build linux --release
+      - name: Package Linux DEB and AppImage
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE="build/linux/x64/release/bundle"
+          test -d "$BUNDLE"
+          mkdir -p release deb-root/DEBIAN deb-root/opt/solve-cube deb-root/usr/bin appimage-root/opt/solve-cube appimage-root/usr/bin appimage-root/usr/share/applications
+          cp -a "$BUNDLE"/. deb-root/opt/solve-cube/
+          cp -a "$BUNDLE"/. appimage-root/opt/solve-cube/
+          cat > deb-root/DEBIAN/control <<'EOF'
+          Package: solve-cube
+          Version: 0.1.0
+          Section: games
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Solve Cube contributors
+          Description: Solve Cube twisty-puzzle solver
+          EOF
+          cat > deb-root/usr/bin/solve-cube <<'EOF'
+          #!/bin/sh
+          exec /opt/solve-cube/solve_cube "$@"
+          EOF
+          cat > appimage-root/AppRun <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/opt/solve-cube/solve_cube" "$@"
+          EOF
+          cat > appimage-root/usr/bin/solve-cube <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")/../.."
+          exec "$HERE/opt/solve-cube/solve_cube" "$@"
+          EOF
+          cat > appimage-root/usr/share/applications/solve-cube.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Solve Cube
+          Exec=solve-cube
+          Categories=Game;
+          Terminal=false
+          EOF
+          chmod 0755 deb-root/usr/bin/solve-cube appimage-root/AppRun appimage-root/usr/bin/solve-cube
+          dpkg-deb --build --root-owner-group deb-root release/Solve-Cube-linux-x86_64.deb
+          curl -L --fail --retry 3 -o appimagetool.AppImage https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool.AppImage
+          ARCH=x86_64 ./appimagetool.AppImage appimage-root release/Solve-Cube-linux-x86_64.AppImage
+          test -s release/Solve-Cube-linux-x86_64.deb
+          test -s release/Solve-Cube-linux-x86_64.AppImage
       - name: Build web app
         if: matrix.target == 'web'
         run: flutter build web --release
-      - name: Upload Android APK
+      - name: Upload Android packages
         if: matrix.target == 'android'
         uses: actions/upload-artifact@v4
         with:
           name: solve-cube-android
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
           retention-days: 14
       - name: Upload iOS app
@@ -115,15 +258,31 @@ jobs:
           path: build/ios/iphoneos/Runner.app
           if-no-files-found: error
           retention-days: 14
-      - name: Upload macOS app
-        if: matrix.target == 'macos'
+      - name: Upload macOS DMG
+        if: startsWith(matrix.target, 'macos-')
         uses: actions/upload-artifact@v4
         with:
-          name: solve-cube-macos
-          path: build/macos/Build/Products/Release/solve_cube.app
+          name: solve-cube-${{ matrix.target }}
+          path: release/*.dmg
           if-no-files-found: error
           retention-days: 14
-      - name: Upload Windows app
+      - name: Upload Windows installers
+        if: matrix.target == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: solve-cube-windows-installers
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Linux installers
+        if: matrix.target == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: solve-cube-linux-installers
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Windows app bundle
         if: matrix.target == 'windows'
         uses: actions/upload-artifact@v4
         with:
@@ -131,7 +290,7 @@ jobs:
           path: build/windows/x64/runner/Release
           if-no-files-found: error
           retention-days: 14
-      - name: Upload Linux app
+      - name: Upload Linux app bundle
         if: matrix.target == 'linux'
         uses: actions/upload-artifact@v4
         with:
@@ -180,7 +339,7 @@ jobs:
           pattern: solve-cube-*
           path: dist
           merge-multiple: false
-      - name: Validate all platform artifacts and create ZIP packages
+      - name: Validate artifacts and assemble release packages
         shell: bash
         run: |
           set -euo pipefail
@@ -189,16 +348,29 @@ jobs:
           ANDROID_APK="$(find dist/solve-cube-android -type f -name app-release.apk -print -quit)"
           test -n "$ANDROID_APK"
           test -s "$ANDROID_APK"
-          cp "$ANDROID_APK" release/Solve-Cube-Android.apk
-          (cd dist/solve-cube-android && zip -qr ../../release/Solve-Cube-Android.zip .)
+          cp "$ANDROID_APK" release/Solve-Cube-Android-universal.apk
+          find dist/solve-cube-android -type f -name '*-release.apk' -exec cp {} release/ \;
 
-          for target in ios macos windows linux web; do
+          for target in ios windows linux web; do
             test -d "dist/solve-cube-$target"
             test -n "$(find "dist/solve-cube-$target" -mindepth 1 -print -quit)"
             (cd "dist/solve-cube-$target" && zip -qr "../../release/Solve-Cube-$target.zip" .)
           done
-
-          test "$(find release -maxdepth 1 -type f | wc -l)" -eq 7
+          for target in macos-arm64 macos-intel; do
+            test -d "dist/solve-cube-$target"
+            cp "dist/solve-cube-$target/"*.dmg release/
+          done
+          for file in dist/solve-cube-windows-installers/* dist/solve-cube-linux-installers/*; do
+            test -s "$file"
+            cp "$file" release/
+          done
+          (cd dist/solve-cube-android && zip -qr ../../release/Solve-Cube-Android.zip .)
+          test -s release/Solve-Cube-Windows-x64-Setup.exe
+          test -s release/Solve-Cube-Windows-x64.msi
+          test -s release/Solve-Cube-macos-arm64.dmg
+          test -s release/Solve-Cube-macos-intel.dmg
+          test -s release/Solve-Cube-linux-x86_64.deb
+          test -s release/Solve-Cube-linux-x86_64.AppImage
           for archive in release/*.zip; do unzip -t "$archive"; done
           ls -lh release
 
