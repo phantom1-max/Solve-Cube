@@ -15,6 +15,11 @@ dependencies:
   puzzle_cube: ^0.2.1
   cuber: ^0.4.0
 
+dependency_overrides:
+  # CameraX 0.7.4+6 adds the missing compile-time concurrent-futures dependency
+  # required by Gradle 9 when resolving CameraX type annotations.
+  camera_android_camerax: 0.7.4+6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
