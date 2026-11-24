@@ -170,8 +170,8 @@ jobs:
         uses: actions/deploy-pages@v4
 
   publish-prerelease:
-    if: github.event_name != 'pull_request'
-    needs: [test, build, deploy-web]
+    if: github.event_name != 'pull_request' && needs.test.result == 'success' && needs.build.result == 'success'
+    needs: [test, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
