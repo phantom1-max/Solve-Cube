@@ -224,11 +224,21 @@ jobs:
           HERE="$(dirname "$(readlink -f "$0")")/../.."
           exec "$HERE/opt/solve-cube/solve_cube" "$@"
           EOF
+          cat > appimage-root/solve-cube.svg <<'EOF'
+          <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+            <rect x="8" y="8" width="240" height="240" rx="48" fill="#111827"/>
+            <path d="M128 34 211 80 128 127 45 80Z" fill="#FACC15" stroke="#F8FAFC" stroke-width="7" stroke-linejoin="round"/>
+            <path d="M45 80 128 127 128 222 45 174Z" fill="#22C55E" stroke="#F8FAFC" stroke-width="7" stroke-linejoin="round"/>
+            <path d="M211 80 128 127 128 222 211 174Z" fill="#3B82F6" stroke="#F8FAFC" stroke-width="7" stroke-linejoin="round"/>
+            <path d="M86 104 86 198 M169 104 169 198 M87 57 170 104 M45 127 128 174 M211 127 128 174" fill="none" stroke="#111827" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          EOF
           cat > appimage-root/usr/share/applications/solve-cube.desktop <<'EOF'
           [Desktop Entry]
           Type=Application
           Name=Solve Cube
           Exec=solve-cube
+          Icon=solve-cube
           Categories=Game;
           Terminal=false
           EOF
@@ -309,7 +319,8 @@ jobs:
           retention-days: 14
 
   deploy-web:
-    if: github.event_name != 'pull_request'
+    # Run web deployment after the build matrix finishes, even if a non-web platform fails.
+    if: always() && github.event_name != 'pull_request' && needs.test.result == 'success'
     needs: [test, build]
     runs-on: ubuntu-latest
     permissions:
@@ -329,64 +340,5 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-  publish-prerelease:
-    if: github.event_name != 'pull_request' && needs.test.result == 'success' && needs.build.result == 'success'
-    needs: [test, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: solve-cube-*
-          path: dist
-          merge-multiple: false
-      - name: Validate artifacts and assemble release packages
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p release
 
-          ANDROID_APK="$(find dist/solve-cube-android -type f -name app-release.apk -print -quit)"
-          test -n "$ANDROID_APK"
-          test -s "$ANDROID_APK"
-          cp "$ANDROID_APK" release/Solve-Cube-Android-universal.apk
-          find dist/solve-cube-android -type f -name '*-release.apk' -exec cp {} release/ \;
-
-          for target in ios windows linux web; do
-            test -d "dist/solve-cube-$target"
-            test -n "$(find "dist/solve-cube-$target" -mindepth 1 -print -quit)"
-            (cd "dist/solve-cube-$target" && zip -qr "../../release/Solve-Cube-$target.zip" .)
-          done
-          for target in macos-arm64 macos-intel; do
-            test -d "dist/solve-cube-$target"
-            cp "dist/solve-cube-$target/"*.dmg release/
-          done
-          for file in dist/solve-cube-windows-installers/* dist/solve-cube-linux-installers/*; do
-            test -s "$file"
-            cp "$file" release/
-          done
-          (cd dist/solve-cube-android && zip -qr ../../release/Solve-Cube-Android.zip .)
-          test -s release/Solve-Cube-Windows-x64-Setup.exe
-          test -s release/Solve-Cube-Windows-x64.msi
-          test -s release/Solve-Cube-macos-arm64.dmg
-          test -s release/Solve-Cube-macos-intel.dmg
-          test -s release/Solve-Cube-linux-x86_64.deb
-          test -s release/Solve-Cube-linux-x86_64.AppImage
-          for archive in release/*.zip; do unzip -t "$archive"; done
-          ls -lh release
-
-      - name: Read app version
-        id: app_version
-        shell: bash
-        run: |
-          VERSION="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)"
-          test -n "$VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Publish prerelease
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.app_version.outputs.version }}
-          name: Solve Cube v${{ steps.app_version.outputs.version }} - Platform Preview
-          prerelease: true
-          generate_release_notes: true
-          files: release/*
+# Release publishing is intentionally withheld until all product requirements and platform packages are verified.
